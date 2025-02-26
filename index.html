@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<head>
+  <title>Stream</title>
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+  ></script>
+</head>
+<body>
+  <main x-data="Componente()" x-init="handleOnInitializeApp">
+    <section>
+      <header style="margin-bottom: 12px; position: relative">
+        <h2>Divisão de arquivos de texto</h2>
+        <span
+          id="source"
+          style="position: absolute; font-size: 18px; top: 0; left: 80px"
+          x-show="data.fileSize > 0"
+          x-text="data.fileSize"
+        ></span>
+      </header>
+
+      <form style="display: flex; flex-direction: column">
+        <div style="padding-top: 0.5rem">
+          <span style="font-weight: bold">Arquivo:</span>
+          <input
+            type="file"
+            id="file"
+            required
+            x-on:change="handleOnChangeFile"
+          />
+        </div>
+        <div style="padding-top: 0.5rem">
+          <span style="font-weight: bold">Separar por:</span>
+          <select
+            name="sliceType"
+            id="sliceType"
+            required
+            x-model="data.sliceType"
+          >
+            <option value="line">Linhas</option>
+            <option value="size">Tamanho</option>
+          </select>
+        </div>
+        <div style="padding-top: 0.5rem" x-show="data.sliceType === 'size'">
+          <span style="font-weight: bold">Tamanho:</span>
+          <select
+            name="sliceSize"
+            id="sliceSize"
+            required
+            x-model="data.sliceSize"
+          >
+            <option value="5">5MB</option>
+            <option value="10">10MB</option>
+            <option value="50">50MB</option>
+          </select>
+        </div>
+        <div style="padding-top: 0.5rem" x-show="data.sliceType === 'line'">
+          <span style="font-weight: bold">Linhas:</span>
+          <input
+            type="number"
+            id="sliceLines"
+            name="sliceLines"
+            max="10000"
+            x-model="data.sliceLines"
+          />
+        </div>
+        <div style="padding-top: 0.5rem">
+          <span style="font-weight: bold">Situação:</span>
+          <p id="status" x-text="getStatusText"></p>
+        </div>
+        <div>
+          <button 
+            x-show="data.status === 'idle'"
+            x-on:click="data.file && handleOnFormSubmit()" type="button">
+            Transformar
+          </button>
+          <button
+            x-show="data.status === 'processing'"
+            x-on:click="data.status === 'processing' && handleOnClickTerminate()"
+            type="button"
+          >
+            Interromper
+          </button>
+          <button
+            x-show="data.status === 'stopped'"
+            x-on:click="data.status === 'stopped' && handleOnClickClearStatus()"
+            type="button"
+          >
+            Limpar
+          </button>
+        </div>
+      </form>
+    </section>
+    <section>
+      <div x-show="data.files.length > 0">
+        <p>Arquivos gerados:</p>
+        <ul>
+          <template
+            x-for="(file,index) in data.files"
+            :key="`${file.name}-${index}`"
+          >
+            <li>
+              <a
+                :href="file.url"
+                :download="file.name"
+                target="_blank"
+                x-text="file.text"
+              ></a>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </section>
+  </main>
+  <script>
+    const Componente = () => {
+      return {
+        data: {
+          sliceSize: 5,
+          sliceType: "size",
+          sliceLines: 0,
+
+          status: "idle",
+          file: null,
+          fileSize: 0,
+          worker: null,
+
+          files: [],
+          lineSeparator: "\n",
+        },
+
+        handleOnInitializeApp() {
+          this.handleOnInitializeWorker()
+        },
+
+        handleOnInitializeWorker() {
+          this.data.worker = new Worker("worker.js");
+          this.data.worker.addEventListener("message", (event) => {
+            this.handleOnReceiveMessage(event);
+          });
+        },
+
+        handleOnClickTerminate() {
+          this.data.worker.terminate();
+          this.data.worker.terminated = true;
+          this.data.file = null;
+          this.data.status = "stopped"
+          document.getElementById("file").value = null;
+        },
+
+        handleOnClickClearStatus() {          
+          this.data.files = [];
+          this.data.status = "idle"
+        },
+
+        handleOnReceiveMessage(event) {
+          const { type, value } = event.data;
+
+          if (type === "status" && value.status === "completed") {
+            this.file = null;
+            this.data.status = "completed";
+          }
+
+          if (type === "status" && value.status === "progress") {
+            this.data.status = "processing";
+          }
+
+          if (type === "file" && value.file && value.name) {
+            this.data.files = [
+              ...this.data.files,
+              {
+                url: URL.createObjectURL(value.file),
+                name: value.name,
+                target: "_blank",
+                text: `${value.name} (${this.getBytesForHuman(value.size)})`,
+                download: true,
+              },
+            ];
+          }
+        },
+
+        handleOnChangeFile(event) {          
+          const file = event.target?.files?.[0];
+          if (!file) return;
+
+          this.data.file = file;
+
+          if (this.data.files.length > 0) {
+            this.data.files = [];
+          }
+
+          this.data.fileSize = this.getBytesForHuman(file.size);
+        },
+
+        handleOnFormSubmit() {                    
+          if(this.data.worker.terminated === true){
+            this.handleOnInitializeWorker()
+          }
+          this.data.worker.postMessage({
+            file: this.data.file,
+            lineSeparator: this.data.lineSeparator,
+            sliceType: this.data.sliceType,
+            sliceLines: this.data.sliceLines,
+            sliceSize: (this.data.sliceSize || 5) * 1_000_000,
+          });
+        },
+
+        getBytesForHuman(bytes) {
+          let units = ["B", "KB", "MB", "GB", "TB", "PB"];
+          let i = 0;
+          for (i; bytes > 1024; i++) {
+            bytes /= 1024;
+          }
+          return bytes.toFixed(1) + " " + units[i];
+        },
+
+        getStatusText() {
+          if (this.data.status === "processing") {
+            return "Processando tratamento de arquivo";
+          }
+          if (this.data.status === "completed") {
+            return "Processamento de arquivo finalizado";
+          }
+          if (this.data.status === "stopped") {
+            return "Limpe o processamento atual para reiniciar";
+          }
+          return "Carregue o arquivo para iniciar o processamento";
+        },
+      };
+    };
+  </script>
+</body>
