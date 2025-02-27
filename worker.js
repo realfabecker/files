@@ -1,5 +1,6 @@
 self.addEventListener("message", async (event) => {
-  const { file, sliceSize, lineSeparator, sliceType, sliceLines } = event.data;
+  const { file, sliceSize, lineSeparator, sliceType, sliceLines, header } =
+    event.data;
   const decoder = new TextDecoder();
   const stream = file.stream();
   const reader = stream.getReader();
@@ -8,12 +9,18 @@ self.addEventListener("message", async (event) => {
   let chunks = [];
   let sizes = 0;
   let lines = 0;
+  let total = 0;
+
+  if (header) {
+    const { value } = await reader.read();
+    chunks.push(decoder.decode(value, { stream: true }));
+    sizes += sizeOfStringUTF8(chunks[0]);
+  }
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    self.postMessage(this.newMessageTypeWork());
     const text = decoder.decode(value, { stream: true });
 
     text.split(lineSeparator).forEach((line) => {
@@ -27,11 +34,14 @@ self.addEventListener("message", async (event) => {
       ) {
         const blob = new Blob(chunks, { type: file.type });
         self.postMessage(this.newMessageTypeFile(blob, ++files));
-        chunks = [];
+        chunks = header ? [chunks[0]] : [];
         sizes = 0;
         lines = 0;
       }
     });
+
+    total += value.length;
+    self.postMessage(this.newMessageTypeWork((total / file.size) * 100));
   }
   if (chunks.length) {
     const blob = new Blob(chunks, { type: file.type });
@@ -58,8 +68,11 @@ function sizeOfStringUTF8(str) {
   return utf8Length;
 }
 
-function newMessageTypeWork() {
-  return { type: "status", value: { status: "progress" } };
+function newMessageTypeWork(progress) {
+  return {
+    type: "status",
+    value: { status: "progress", progress: Math.round(progress) },
+  };
 }
 
 function newMessageTypeDone() {

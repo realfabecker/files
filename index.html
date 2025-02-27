@@ -7,7 +7,7 @@
   ></script>
 </head>
 <body>
-  <main x-data="Componente()" x-init="handleOnInitializeApp">
+  <main x-data="App" x-init="handleOnInitializeApp">
     <section>
       <header style="margin-bottom: 12px; position: relative">
         <h2>Divisão de arquivos de texto</h2>
@@ -49,9 +49,11 @@
             required
             x-model="data.sliceSize"
           >
-            <option value="5">5MB</option>
+            <option value="2">2MB</option>
+            <option value="4">4MB</option>
             <option value="10">10MB</option>
             <option value="50">50MB</option>
+            <option value="100">100MB</option>
           </select>
         </div>
         <div style="padding-top: 0.5rem" x-show="data.sliceType === 'line'">
@@ -65,10 +67,14 @@
           />
         </div>
         <div style="padding-top: 0.5rem">
-          <span style="font-weight: bold">Situação:</span>
-          <p id="status" x-text="getStatusText"></p>
+          <span style="font-weight: bold">Cabeçalho:</span>
+          <input type="checkbox" id="header" name="header" x-model="data.header" />
         </div>
-        <div>
+        <div style="padding-top: 0.5rem">
+          <span style="font-weight: bold">Situação:</span>
+          <span x-text="getStatusText"></span>          
+        </div>
+        <div style="padding-top: 1.5rem;">
           <button 
             x-show="data.status === 'idle'"
             x-on:click="data.file && handleOnFormSubmit()" type="button">
@@ -82,8 +88,8 @@
             Interromper
           </button>
           <button
-            x-show="data.status === 'stopped'"
-            x-on:click="data.status === 'stopped' && handleOnClickClearStatus()"
+            x-show="data.status === 'stopped' || data.status === 'completed'"
+            x-on:click="(data.status === 'stopped' || data.status === 'completed') && handleOnClickClearStatus()"
             type="button"
           >
             Limpar
@@ -113,9 +119,11 @@
     </section>
   </main>
   <script>
-    const Componente = () => {
+    const App = () => {
       return {
         data: {
+          header: true,
+
           sliceSize: 5,
           sliceType: "size",
           sliceLines: 0,
@@ -124,6 +132,7 @@
           file: null,
           fileSize: 0,
           worker: null,
+          progress: 0,
 
           files: [],
           lineSeparator: "\n",
@@ -161,7 +170,10 @@
             this.data.status = "completed";
           }
 
-          if (type === "status" && value.status === "progress") {
+          if (type === "status" && value.status === "progress") {            
+            if(value.progress % 4 ===0 ){
+              this.data.progress = value.progress
+            }
             this.data.status = "processing";
           }
 
@@ -199,6 +211,7 @@
           this.data.worker.postMessage({
             file: this.data.file,
             lineSeparator: this.data.lineSeparator,
+            header: this.data.header,
             sliceType: this.data.sliceType,
             sliceLines: this.data.sliceLines,
             sliceSize: (this.data.sliceSize || 5) * 1_000_000,
@@ -216,15 +229,15 @@
 
         getStatusText() {
           if (this.data.status === "processing") {
-            return "Processando tratamento de arquivo";
+            return `Processando trechos encontrados em arquivo (${this.data.progress}%)`;
           }
           if (this.data.status === "completed") {
             return "Processamento de arquivo finalizado";
           }
           if (this.data.status === "stopped") {
-            return "Limpe o processamento atual para reiniciar";
+            return "Você pode limpar o processamento atual se quiser iniciar novamente";
           }
-          return "Carregue o arquivo para iniciar o processamento";
+          return "Carregue um arquivo para iniciar o processamento";
         },
       };
     };
