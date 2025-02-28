@@ -1,5 +1,5 @@
 self.addEventListener("message", async (event) => {
-  const { file, sliceSize, lineSeparator, sliceType, sliceLines, header } =
+  const { file, sliceSize, lineSeparator, sliceType, sliceLines, header, fileName } =
     event.data;
   const decoder = new TextDecoder();
   const stream = file.stream();
@@ -33,7 +33,7 @@ self.addEventListener("message", async (event) => {
         (sliceType === "size" && sliceSize && sizes >= sliceSize)
       ) {
         const blob = new Blob(chunks, { type: file.type });
-        self.postMessage(this.newMessageTypeFile(blob, ++files));
+        self.postMessage(this.newMessageTypeFile(blob, ++files, fileName));
         chunks = header ? [chunks[0]] : [];
         sizes = 0;
         lines = 0;
@@ -45,7 +45,7 @@ self.addEventListener("message", async (event) => {
   }
   if (chunks.length) {
     const blob = new Blob(chunks, { type: file.type });
-    self.postMessage(this.newMessageTypeFile(blob, ++files));
+    self.postMessage(this.newMessageTypeFile(blob, ++files, fileName));
   }
   self.postMessage(this.newMessageTypeDone());
 });
@@ -79,12 +79,12 @@ function newMessageTypeDone() {
   return { type: "status", value: { status: "completed" } };
 }
 
-function newMessageTypeFile(blob, files) {
+function newMessageTypeFile(blob, files, fileName) {
   return {
     type: "file",
     value: {
       file: blob,
-      name: `file-${String(++files).padStart(2, "0")}`,
+      name: `${fileName}-${String(++files).padStart(2, "0")}.csv`,
       size: blob.size,
     },
   };

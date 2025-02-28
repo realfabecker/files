@@ -1,0 +1,102 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {    
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 62.5%;
+}
+
+body {
+    font-size: 1.6rem;
+    background-color: #f4f4f4;
+}
+
+.container {    
+    width: 100%;
+    max-width: 800px;
+    margin: 2rem auto;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+}
+
+header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+label {
+    font-weight: bold;
+    font-size: 1.6rem;
+    color: #333;
+    cursor: pointer;
+}
+
+input[type="number"], select {    
+    padding: .8rem;
+    margin: 5px 0 15px 0;
+    border-radius: .5rem;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 1rem 2rem;
+    border-radius: .5rem;
+    border: none;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: .5rem;
+}
+
+label:has(+input[type="file"]) {    
+    text-align: center;
+    border: 1px dashed #4f4f4f;
+    background-color: #f4eded;
+    padding: 2.5rem;
+}
+
+label:has(+input[type="file"]:valid) {    
+    background-color: #e2ede5;
+}
+
+label:has(+input[type="file"])::before { 
+    content: "\1F4C1"; 
+    display: block;
+    font-size: 8rem;
+}
+
+label:has(+input[type="file"]:valid)::before {     
+    content: "\2713"; 
+    display: block;
+    font-size: 8rem;
+}
+
+label + input[type="checkbox"] {
+    margin-right: 1rem;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.status-detail {    
+    width: 100%;
+    height: 4.5rem;
+    text-align: center;
+    vertical-align: middle;    
+    margin: 1.5rem 0;
+    font-size: 2rem;
+}

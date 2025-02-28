@@ -5,32 +5,25 @@
     defer
     src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
   ></script>
+  <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="stylesheet" href="main.css" />
+  <script src="main.js"></script>
 </head>
 <body>
-  <main x-data="App" x-init="handleOnInitializeApp">
+  <main x-data="App" x-init="handleOnInitializeApp" class="container">
     <section>
-      <header style="margin-bottom: 12px; position: relative">
+      <header>
         <h2>Divisão de arquivos de texto</h2>
         <span
           id="source"
-          style="position: absolute; font-size: 18px; top: 0; left: 80px"
           x-show="data.fileSize > 0"
           x-text="data.fileSize"
         ></span>
       </header>
 
-      <form style="display: flex; flex-direction: column">
-        <div style="padding-top: 0.5rem">
-          <span style="font-weight: bold">Arquivo:</span>
-          <input
-            type="file"
-            id="file"
-            required
-            x-on:change="handleOnChangeFile"
-          />
-        </div>
-        <div style="padding-top: 0.5rem">
-          <span style="font-weight: bold">Separar por:</span>
+      <form>
+        <div class="form-group">
+          <label for="sliceType">Dividir por:</label>
           <select
             name="sliceType"
             id="sliceType"
@@ -41,8 +34,8 @@
             <option value="size">Tamanho</option>
           </select>
         </div>
-        <div style="padding-top: 0.5rem" x-show="data.sliceType === 'size'">
-          <span style="font-weight: bold">Tamanho:</span>
+        <div class="form-group" x-show="data.sliceType === 'size'">
+          <label for="sliceSize">Tamanho:</label>
           <select
             name="sliceSize"
             id="sliceSize"
@@ -56,8 +49,8 @@
             <option value="100">100MB</option>
           </select>
         </div>
-        <div style="padding-top: 0.5rem" x-show="data.sliceType === 'line'">
-          <span style="font-weight: bold">Linhas:</span>
+        <div class="form-group" x-show="data.sliceType === 'line'">
+          <label for="sliceLines">Linhas:</label>
           <input
             type="number"
             id="sliceLines"
@@ -66,18 +59,24 @@
             x-model="data.sliceLines"
           />
         </div>
-        <div style="padding-top: 0.5rem">
-          <span style="font-weight: bold">Cabeçalho:</span>
-          <input type="checkbox" id="header" name="header" x-model="data.header" />
+        <div class="form-group">
+          <label for="file" x-text='data.fullName ? data.fullName : "Carregue o arquivo"'>Label</label>
+          <input
+            type="file"
+            id="file"
+            required
+            x-on:change="handleOnChangeFile"
+          />
+        </div>                
+        <div class="status-detail">          
+          <p x-text="getStatusText"></p>
         </div>
-        <div style="padding-top: 0.5rem">
-          <span style="font-weight: bold">Situação:</span>
-          <span x-text="getStatusText"></span>          
-        </div>
-        <div style="padding-top: 1.5rem;">
-          <button 
+        <div>
+          <button
             x-show="data.status === 'idle'"
-            x-on:click="data.file && handleOnFormSubmit()" type="button">
+            x-on:click="data.file && handleOnFormSubmit()"
+            type="button"
+          >
             Transformar
           </button>
           <button
@@ -118,128 +117,4 @@
       </div>
     </section>
   </main>
-  <script>
-    const App = () => {
-      return {
-        data: {
-          header: true,
-
-          sliceSize: 5,
-          sliceType: "size",
-          sliceLines: 0,
-
-          status: "idle",
-          file: null,
-          fileSize: 0,
-          worker: null,
-          progress: 0,
-
-          files: [],
-          lineSeparator: "\n",
-        },
-
-        handleOnInitializeApp() {
-          this.handleOnInitializeWorker()
-        },
-
-        handleOnInitializeWorker() {
-          this.data.worker = new Worker("worker.js");
-          this.data.worker.addEventListener("message", (event) => {
-            this.handleOnReceiveMessage(event);
-          });
-        },
-
-        handleOnClickTerminate() {
-          this.data.worker.terminate();
-          this.data.worker.terminated = true;
-          this.data.file = null;
-          this.data.status = "stopped"
-          document.getElementById("file").value = null;
-        },
-
-        handleOnClickClearStatus() {          
-          this.data.files = [];
-          this.data.status = "idle"
-        },
-
-        handleOnReceiveMessage(event) {
-          const { type, value } = event.data;
-
-          if (type === "status" && value.status === "completed") {
-            this.file = null;
-            this.data.status = "completed";
-          }
-
-          if (type === "status" && value.status === "progress") {            
-            if(value.progress % 4 ===0 ){
-              this.data.progress = value.progress
-            }
-            this.data.status = "processing";
-          }
-
-          if (type === "file" && value.file && value.name) {
-            this.data.files = [
-              ...this.data.files,
-              {
-                url: URL.createObjectURL(value.file),
-                name: value.name,
-                target: "_blank",
-                text: `${value.name} (${this.getBytesForHuman(value.size)})`,
-                download: true,
-              },
-            ];
-          }
-        },
-
-        handleOnChangeFile(event) {          
-          const file = event.target?.files?.[0];
-          if (!file) return;
-
-          this.data.file = file;
-
-          if (this.data.files.length > 0) {
-            this.data.files = [];
-          }
-
-          this.data.fileSize = this.getBytesForHuman(file.size);
-        },
-
-        handleOnFormSubmit() {                    
-          if(this.data.worker.terminated === true){
-            this.handleOnInitializeWorker()
-          }
-          this.data.worker.postMessage({
-            file: this.data.file,
-            lineSeparator: this.data.lineSeparator,
-            header: this.data.header,
-            sliceType: this.data.sliceType,
-            sliceLines: this.data.sliceLines,
-            sliceSize: (this.data.sliceSize || 5) * 1_000_000,
-          });
-        },
-
-        getBytesForHuman(bytes) {
-          let units = ["B", "KB", "MB", "GB", "TB", "PB"];
-          let i = 0;
-          for (i; bytes > 1024; i++) {
-            bytes /= 1024;
-          }
-          return bytes.toFixed(1) + " " + units[i];
-        },
-
-        getStatusText() {
-          if (this.data.status === "processing") {
-            return `Processando trechos encontrados em arquivo (${this.data.progress}%)`;
-          }
-          if (this.data.status === "completed") {
-            return "Processamento de arquivo finalizado";
-          }
-          if (this.data.status === "stopped") {
-            return "Você pode limpar o processamento atual se quiser iniciar novamente";
-          }
-          return "Carregue um arquivo para iniciar o processamento";
-        },
-      };
-    };
-  </script>
 </body>
