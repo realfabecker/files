@@ -1,11 +1,10 @@
 const App = () => {
   return {
-    data: {      
-
+    data: {
       sliceSize: 5,
       sliceType: "size",
-      sliceLines: 0,
-
+      sliceLines: 250,
+      resultType: "zip",
       status: "idle",
       file: null,
       fileSize: 0,
@@ -16,9 +15,10 @@ const App = () => {
 
       files: [],
       lineSeparator: "\n",
-      compress: true,
       header: true,
       zip: null,
+      
+      reason: null
     },
 
     handleOnInitializeApp() {
@@ -36,42 +36,50 @@ const App = () => {
       this.data.worker.terminate();
       this.data.worker.terminated = true;
       this.data.file = null;
+      this.data.zip = null;
       this.data.status = "stopped";
       document.getElementById("file").value = null;
     },
 
     handleOnClickClearStatus() {
       this.data.files = [];
+      this.data.file = null;
+      this.data.fullName = null;
       this.data.status = "idle";
+      document.getElementById("file").value = null;
     },
 
     async handleOnReceiveMessage(event) {
       const { type, value } = event.data;
 
       if (type === "status" && value.status === "completed") {
-        this.file = null;
-        this.data.status = "completed";
-
-        if (this.data.zip !== null) {
+        if (this.data.resultType === "zip" && this.data.zip !== null) {
           this.data.status = "compressing";
-          const zipData = await this.data.zip.generateAsync(
-            {
-              type: "blob",
-              streamFiles: true,
-            },
-            (meta) => {
-              this.data.progress = Math.round(meta.percent || 0);
-            }
-          );
-          this.data.files = [
-            {
-              url: URL.createObjectURL(zipData),
-              name: this.data.fileName + ".zip",
-              target: "_blank",
-              text: this.data.fileName + ".zip",
-              download: true,
-            },
-          ];
+          try {
+            const zipData = await this.data.zip.generateAsync(
+              {
+                type: "blob",
+                streamFiles: true,
+              },
+              (meta) => {
+                this.data.progress = Math.round(meta.percent || 0);
+              }
+            );
+            this.data.files = [
+              {
+                url: URL.createObjectURL(zipData),
+                name: this.data.fileName + ".zip",
+                target: "_blank",
+                text: this.data.fileName + ".zip",
+                download: true,
+              },
+            ];
+            this.data.status = "completed";
+          } catch (error) {
+            this.data.reason = "error:compressing";
+            this.data.status = "error";
+          }
+        } else {
           this.data.status = "completed";
         }
       }
@@ -84,7 +92,7 @@ const App = () => {
       }
 
       if (type === "file" && value.file && value.name) {
-        if (this.data.compress === true) {
+        if (this.data.resultType === "zip") {
           if (!this.data.zip) {
             this.data.zip = new JSZip();
           }
@@ -114,9 +122,9 @@ const App = () => {
         this.data.files = [];
       }
 
-      this.data.fullName = file.name
       this.data.fileName = file.name.split(".").slice(0, -1)?.[0] || "file";
       this.data.fileSize = this.getBytesForHuman(file.size);
+      this.data.fullName = file.name + " (" + this.data.fileSize + ")";
     },
 
     handleOnFormSubmit() {
@@ -143,20 +151,11 @@ const App = () => {
       return bytes.toFixed(1) + " " + units[i];
     },
 
-    getStatusText() {
-      if (this.data.status === "processing") {
-        return `Processando trechos encontrados em arquivo (${this.data.progress}%)`;
+    getLabelForInputTypeFile() {
+      if (this.data.file && this.data.fullName) {
+        return this.data.fullName;
       }
-      if (this.data.status === "completed") {
-        return "Processamento de arquivo finalizado";
-      }
-      if (this.data.status === "compressing") {
-        return `Aguarde enquanto o arquivo esta sendo preparado (${this.data.progress}%)`;
-      }
-      if (this.data.status === "stopped") {
-        return "Você pode limpar o processamento atual se quiser iniciar novamente";
-      }
-      return "Carregue um arquivo para iniciar o processamento";
+      return "É aqui que você vai carregar o seu arquivo para ser cortado";
     },
   };
 };

@@ -13,7 +13,7 @@
   <main x-data="App" x-init="handleOnInitializeApp" class="container">
     <section>
       <header>
-        <h2>Divisão de arquivos de texto</h2>
+        <h2>Cortexto</h2>
         <span
           id="source"
           x-show="data.fileSize > 0"
@@ -23,19 +23,27 @@
 
       <form>
         <div class="form-group">
-          <label for="sliceType">Dividir por:</label>
+          <label for="sliceType"
+            >Qual a estratégia de corte que você quer utilizar?</label
+          >
           <select
             name="sliceType"
             id="sliceType"
             required
             x-model="data.sliceType"
           >
-            <option value="line">Linhas</option>
-            <option value="size">Tamanho</option>
+            <option value="line">
+              (a) Eu quero cortar em arquivos menores com um número máximo de linhas por arquivo
+            </option>
+            <option value="size">
+              (b) Eu quero cortar em arquivos menores com um tamanho máximo por arquivo
+            </option>
           </select>
         </div>
         <div class="form-group" x-show="data.sliceType === 'size'">
-          <label for="sliceSize">Tamanho:</label>
+          <label for="sliceSize"
+            >Qual o tamanho máximo que que cada arquivo vai ter após o corte?</label
+          >
           <select
             name="sliceSize"
             id="sliceSize"
@@ -50,7 +58,9 @@
           </select>
         </div>
         <div class="form-group" x-show="data.sliceType === 'line'">
-          <label for="sliceLines">Linhas:</label>
+          <label for="sliceLines">
+            Qual a quantidade máxima de linhas que cada arquivo vai ter após o corte?
+          </label>
           <input
             type="number"
             id="sliceLines"
@@ -60,61 +70,128 @@
           />
         </div>
         <div class="form-group">
-          <label for="file" x-text='data.fullName ? data.fullName : "Carregue o arquivo"'>Label</label>
+          <label for="resultType">Como você quer que eu te entregue o resultado?</label>
+          <select
+            name="resultType"
+            id="resultType"
+            required
+            x-model="data.resultType"
+          >
+            <option value="list">
+              (a) Eu quero uma lista com todos os arquivos para poder escolher o que baixar
+            </option>
+            <option value="zip">
+              (b) Eu quero um arquivo compactado com todos os arquivos gerados para um único download
+            </option>
+          </select>
+        </div>      
+        <div class="form-group">          
+          <label
+            for="file"
+            x-text='getLabelForInputTypeFile'
+            >Label</label
+          >
           <input
             type="file"
             id="file"
             required
+            x-bind:disabled="data.file !== null"
+            accept=".csv,.tsv,.txt"
             x-on:change="handleOnChangeFile"
           />
-        </div>                
-        <div class="status-detail">          
-          <p x-text="getStatusText"></p>
         </div>
-        <div>
+        <div class="status">
+          <div>
+            <p x-show="data.status === 'idle'">
+              Após carregar o arquivo você vai poder pressionar <strong>Fatiar</strong> para iniciar o corte              
+            </p>
+            <p x-show="data.status === 'processing'">
+              Recortando o seu arquivo em pequenos pedacinhos (<span x-text="`${data.progress}%`"></span>)
+            </p>
+            <p class="obs" x-show="data.status === 'processing'">
+              * Você pode <strong>Interromper</strong> esse processo a qualquer momento
+            </p>
+            <p x-show="data.status === 'compressing'">
+              Agora só falta compactar o resultado como você pediu (<span x-text="`${data.progress}%`"></span>)
+            </p>
+            <p x-show="data.status === 'stopped'">
+              O processo de recorte do arquivo foi interrompido
+            </p>            
+            <p class="obs" x-show="data.status === 'stopped'">
+              Você pode <strong>Reiniciar</strong> caso quiser processar um novo arquivo
+            </p>
+            <p x-show="data.status === 'completed'">
+              O processo de recorte do arquivo foi finalizado
+            </p>
+            <p class="obs" x-show="data.status === 'completed' && data.resultType === 'zip'">
+              * Logo abaixo você poderá poderá obter o <strong>arquivo compactado</strong> para download
+            </p>
+            <p class="obs" x-show="data.status === 'completed' && data.resultType === 'list'">
+              * Logo abaixo você poderá poderá obter a <strong>lista de arquivos</strong> para escolher o que baixar
+            </p>
+            <p x-show="data.status === 'error'">
+              Ops! Algo deu errado. Ao tentar processar o seu arquivo
+            </p>
+            <p class="obs" x-show="data.status === 'error' && data.reason === 'error:compressing' && data.sliceType === 'line'">
+              * O erro veio ao compactar o resultado, tente mais uma vez agora com um número maior de linhas por arquivo
+            </p>
+            <p class="obs" x-show="data.status === 'error' && data.reason === 'error:compressing' && data.sliceType === 'size'">
+              * O erro veio ao compactar o resultado, tente mais uma vez agora com um tamanho de corte maior por arquivo
+            </p>
+          </div>
+        </div>
+        <div>          
           <button
+            class="primary"
             x-show="data.status === 'idle'"
             x-on:click="data.file && handleOnFormSubmit()"
             type="button"
-          >
-            Transformar
+            x-bind:disabled="data.file === null"
+          >            
+              Fatiar
           </button>
           <button
+            class="warning"
             x-show="data.status === 'processing'"
-            x-on:click="data.status === 'processing' && handleOnClickTerminate()"
+            x-on:click="handleOnClickTerminate()"
             type="button"
           >
             Interromper
           </button>
           <button
-            x-show="data.status === 'stopped' || data.status === 'completed'"
-            x-on:click="(data.status === 'stopped' || data.status === 'completed') && handleOnClickClearStatus()"
+            class="primary"
+            x-show="data.status === 'compressing'"
+            type="button"
+            disabled
+          >
+            Compactando
+          </button>
+          <button
+            class="primary"
+            x-show="data.status === 'stopped' || data.status === 'completed' || data.status === 'error'"
+            x-on:click="handleOnClickClearStatus"
             type="button"
           >
-            Limpar
+            Reiniciar
           </button>
         </div>
       </form>
     </section>
-    <section>
-      <div x-show="data.files.length > 0">
-        <p>Arquivos gerados:</p>
-        <ul>
-          <template
-            x-for="(file,index) in data.files"
-            :key="`${file.name}-${index}`"
-          >
-            <li>
-              <a
-                :href="file.url"
-                :download="file.name"
-                target="_blank"
-                x-text="file.text"
-              ></a>
-            </li>
-          </template>
-        </ul>
+
+    <hr  style="margin: 20px 0;"/>
+
+    <section class="list-section" x-show="data.files.length > 0">                  
+      <div class="file-list">
+        <template x-for="(file,index) in data.files" :key="`${file.name}-${index}`" >
+          <div class="file-item">
+            <span x-text="file.text"></span>                          
+            <a :href="file.url" :download="file.name" target="_blank">&#x1F847</a>
+          </div>
+        </template>        
       </div>
+      <p class="obs">
+        * Arquivos gerados: <span x-text="data.files.length"></span>
+      </p>
     </section>
   </main>
 </body>

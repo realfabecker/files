@@ -6,12 +6,41 @@
 
 :root {    
     font-family: Calibri, Arial, sans-serif;
-    font-size: 62.5%;
+    font-size: 62.5%;    
+
+    --ico-file-folder: "\1F4C1";
+    --ico-scroll: "\1F4DC";
+
+    --red-200: oklch(0.885 0.062 18.334);
+    --red-100: oklch(0.936 0.032 17.717);
+    --red-50: oklch(0.971 0.013 17.38);
+
+    --gray-700: oklch(0.373 0.034 259.733);
+    --gray-600: oklch(0.446 0.03 256.802);
+    --gray-500: oklch(0.551 0.027 264.364);
+    --gray-400: oklch(0.707 0.022 261.325);
+    --gray-300: oklch(0.872 0.01 258.338);
+    --gray-200: oklch(0.928 0.006 264.531);
+    --gray-100: oklch(0.967 0.003 264.542);
+    --gray-50: oklch(0.985 0.002 247.839);
+
+    --green-500: oklch(0.723 0.219 149.579);
+    --green-400: oklch(0.792 0.209 151.711);
+    --green-300: oklch(0.871 0.15 154.449);
+    --green-200: oklch(0.925 0.084 155.995);
+    --green-100: oklch(0.962 0.044 156.743);
+    --green-50: oklch(0.982 0.018 155.826);
+
+    --yellow-500: oklch(0.795 0.184 86.047);
+    --yellow-400: oklch(0.852 0.199 91.936);
+    --yellow-300: oklch(0.905 0.182 98.111);
+
+    --orange-300: oklch(0.837 0.128 66.29);
 }
 
 body {
     font-size: 1.6rem;
-    background-color: #f4f4f4;
+    background-color: var(--gray-200);
 }
 
 .container {    
@@ -28,10 +57,10 @@ header {
     text-align: center;
 }
 
-label {
+label:not(button label) {
     font-weight: bold;
     font-size: 1.6rem;
-    color: #333;
+    color: var(--gray-700);
     cursor: pointer;
 }
 
@@ -39,20 +68,43 @@ input[type="number"], select {
     padding: .8rem;
     margin: 5px 0 15px 0;
     border-radius: .5rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--gray-300);
 }
 
 button {
     padding: 1rem 2rem;
     border-radius: .5rem;
     border: none;
-    cursor: pointer;
-    background-color: #4CAF50;
+    cursor: pointer;    
     color: white;
+    width: 15rem;
+    max-width: 15rem;
+    font-weight: bold;
 }
 
-button:hover {
-    background-color: #45a049;
+button.primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+button label {
+    cursor: pointer;
+}
+
+button.primary {    
+    background-color: var(--green-400);
+}
+
+button:hover:not(:disabled) {
+    background-color: var(--green-500);
+}
+
+button.warning {        
+    background-color: var(--yellow-400);
+}
+
+button.warning:hover {    
+    background-color: var(--yellow-500);
 }
 
 .form-group {
@@ -63,25 +115,31 @@ button:hover {
 
 label:has(+input[type="file"]) {    
     text-align: center;
-    border: 1px dashed #4f4f4f;
-    background-color: #f4eded;
+    border: 1px dashed var(--gray-300);
+    background-color: var(--gray-100);
     padding: 2.5rem;
 }
 
-label:has(+input[type="file"]:valid) {    
-    background-color: #e2ede5;
+label:has(+input[type="file"]):hover {
+    background-color: var(--red-50);
 }
 
-label:has(+input[type="file"])::before { 
-    content: "\1F4C1"; 
+label:has(+input[type="file"]:disabled) {    
+    background-color: var(--green-50);    
+    color: var(--orange-300);
+    cursor: default;
+}
+
+label:has(+input[type="file"])::before {
+    content: var(--ico-file-folder); 
     display: block;
     font-size: 8rem;
 }
 
-label:has(+input[type="file"]:valid)::before {     
-    content: "\2713"; 
+label:has(+input[type="file"]:disabled)::before {    
+    content: var(--ico-scroll);
     display: block;
-    font-size: 8rem;
+    font-size: 8rem;    
 }
 
 label + input[type="checkbox"] {
@@ -92,11 +150,57 @@ input[type="file"] {
     display: none;
 }
 
-.status-detail {    
+.status {    
     width: 100%;
     height: 4.5rem;
     text-align: center;
-    vertical-align: middle;    
+    vertical-align: middle;
     margin: 1.5rem 0;
-    font-size: 2rem;
+}
+
+.list-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.list-section p {    
+    align-self: flex-end;
+}
+
+.file-list {
+    display: flex; 
+    flex-direction: column; 
+    gap: .5rem;
+    max-height: 350px;
+    overflow-y: auto;    
+    margin-bottom: 2rem;
+}
+
+.file-item {
+    display: flex; 
+    align-items: center; 
+    max-height: 5.2rem; 
+    height: 5.2rem; 
+    border-radius: .5rem; 
+    padding-left: 2rem; 
+    padding-right: 2rem;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    flex-shrink: 0;
+    flex-grow: 0;
+    justify-content: space-between;
+    border: 1px solid var(--gray-300);
+}
+
+.file-item:hover {
+    background-color: var(--gray-100);
+}
+
+.file-item a {
+    text-decoration: none;
+}
+
+.obs {
+    color: var(--gray-400);
+    font-size: 1.5rem;
+    margin-top: 1rem;
 }
