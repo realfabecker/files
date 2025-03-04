@@ -10,17 +10,14 @@
   <script src="main.js"></script>
 </head>
 <body>
+  <header>
+    <div>
+      <span>&#9986</span>
+      <h2>cortexto</h2>
+    </div>
+  </header>
   <main x-data="App" x-init="handleOnInitializeApp" class="container">
-    <section>
-      <header>
-        <h2>Cortexto</h2>
-        <span
-          id="source"
-          x-show="data.fileSize > 0"
-          x-text="data.fileSize"
-        ></span>
-      </header>
-
+    <section>      
       <form>
         <div class="form-group">
           <label for="sliceType"
